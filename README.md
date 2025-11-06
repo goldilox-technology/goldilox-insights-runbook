@@ -8,8 +8,8 @@ This is a companian runbook for GOLDILOX Inisghts clients
 
 ```
 -- 1) Create Database for runbook
-CREATE DATABASE GOLIDLOX_INSIGHTS_CLIENT_WORKSPACE;
-USE GOLIDLOX_INSIGHTS_CLIENT_WORKSPACE;
+CREATE DATABASE GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
+USE GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
 CREATE SCHEMA REPO;
 
 -- 2) Create an API integration that allows GitHub access to public repo (no creds)
