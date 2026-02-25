@@ -1,12 +1,19 @@
-# GOLDILOX-keyblade-runbook
+# GOLDILOX Insights Runbook
 
-This is a companian runbook for GOLDILOX Inisghts clients
+Companion runbook for GOLDILOX Insights clients.
 
-### How to setup notebook in Snowsight
+### Available Notebooks
 
-#### 1. Setup INTEGRATION
+| Notebook | Purpose | Run As |
+|---|---|---|
+| `Setup_Shared_Views.ipynb` | Creates shared views and data sharing back to Goldilox provider | ACCOUNTADMIN |
+| `Setup_Permissions.ipynb` | Grants warehouse MONITOR and database access permissions to the app | ACCOUNTADMIN |
 
-```
+### How to setup notebooks in Snowsight
+
+#### 1. Setup Integration
+
+```sql
 -- 1) Create Database for runbook
 CREATE DATABASE GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
 USE GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
@@ -24,28 +31,43 @@ CREATE OR REPLACE GIT REPOSITORY NOTEBOOKS_REPO
   API_INTEGRATION = goldilox_public_git;
 ```
 
-#### 2. Create NOTEBOOK
-```
+#### 2. Create Notebooks
+
+```sql
 CREATE SCHEMA IF NOT EXISTS GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS;
 USE SCHEMA GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS;
 
-CREATE OR REPLACE NOTEBOOK GOLDILOX_INSIGHTS_RUNBOOK
+-- Notebook 1: Setup Shared Views (run during initial setup)
+CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
   FROM '@REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb'  
+  MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb'
   -- QUERY_WAREHOUSE = CLIENT_WH                   -- used by SQL cells
   -- WAREHOUSE = CLIENT_WH                         -- used by Python runtime
-  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60         -- optional (15 mins)
-  COMMENT = 'Client copy of Goldilox Insights runbook';
+  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
+  COMMENT = 'Goldilox Insights - Shared views and data sharing setup';
 
+-- Notebook 2: Setup Permissions (run to grant warehouse and database access)
+CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_PERMISSIONS
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Setup_Permissions.ipynb'
+  -- QUERY_WAREHOUSE = CLIENT_WH                   -- used by SQL cells
+  -- WAREHOUSE = CLIENT_WH                         -- used by Python runtime
+  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
+  COMMENT = 'Goldilox Insights - Database access permission setup';
 ```
 
-#### 3. Update NOTEBOOK with latest code
-```
+#### 3. Update Notebooks with latest code
+
+```sql
 -- 1) Fetch latest from the Git repository
 ALTER GIT REPOSITORY NOTEBOOKS_REPO FETCH;
 
--- 2) Refresh the notebook to the latest branch contents
-CREATE OR REPLACE NOTEBOOK GOLDILOX_INSIGHTS_RUNBOOK
+-- 2) Refresh the notebooks to the latest branch contents
+CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
   FROM '@REPO.NOTEBOOKS_REPO/branches/main'
   MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb';
+
+CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_PERMISSIONS
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Setup_Permissions.ipynb';
 ```
