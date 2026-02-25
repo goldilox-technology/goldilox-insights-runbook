@@ -38,3 +38,14 @@ CREATE OR REPLACE NOTEBOOK GOLDILOX_INSIGHTS_RUNBOOK
   COMMENT = 'Client copy of Goldilox Insights runbook';
 
 ```
+
+#### 3. Update NOTEBOOK with latest code
+```
+-- 1) Fetch latest from the Git repository
+ALTER GIT REPOSITORY NOTEBOOKS_REPO FETCH;
+
+-- 2) Refresh the notebook to the latest branch contents
+CREATE OR REPLACE NOTEBOOK GOLDILOX_INSIGHTS_RUNBOOK
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb';
+```
