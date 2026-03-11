@@ -8,6 +8,7 @@ Companion runbook for GOLDILOX Insights clients.
 |---|---|---|
 | `Setup_App_Permissions.ipynb` | **Onboarding & ongoing operations.** Grants warehouse MONITOR and database access permissions required to keep the app running uninterrupted. Re-run when adding new warehouses or databases. | ACCOUNTADMIN |
 | `Setup_Shared_Views.ipynb` | **Troubleshooting & data sharing.** Creates shared views and tables to share data back to the Goldilox provider for support and analysis. | ACCOUNTADMIN |
+| `Migration.ipynb` | **Migration.** Prepares your account for app relisting — creates backup schema and grants app access. Backup and restore are handled in the app's Settings page. | ACCOUNTADMIN |
 
 ### How to setup notebooks in Snowsight
 
@@ -54,6 +55,15 @@ CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
   -- WAREHOUSE = CLIENT_WH                         -- used by Python runtime
   IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
   COMMENT = 'Goldilox Insights - Shared views and data sharing setup';
+
+-- Notebook 3: Migration (backup before uninstall, restore after reinstall)
+CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Migration.ipynb'
+  -- QUERY_WAREHOUSE = CLIENT_WH
+  -- WAREHOUSE = CLIENT_WH
+  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
+  COMMENT = 'Goldilox Insights - Migration backup and restore';
 ```
 
 #### 3. Update Notebooks with latest code
@@ -70,4 +80,8 @@ CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_APP_PERMISSIONS
 CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
   FROM '@REPO.NOTEBOOKS_REPO/branches/main'
   MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb';
+
+CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Migration.ipynb';
 ```
