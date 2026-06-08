@@ -1,103 +1,170 @@
-# GOLDILOX Insights Runbook
+# Free Snowflake Table Scan Efficiency Report
 
-Companion runbook for GOLDILOX Insights clients.
+**Find which Snowflake tables are wasting compute on avoidable partition scans — and what it's worth.**
 
-### Available Notebooks
+A free, fully source-available Snowflake notebook you run **in your own account**. It reads
+Snowflake's own telemetry and shows you how much of your scanning is avoidable, a conservative
+dollar estimate of the opportunity, the tables where it concentrates, and the columns your queries
+filter on.
 
-| Notebook | Purpose | Run As |
-|---|---|---|
-| `Setup_App_Permissions.ipynb` | **Onboarding & ongoing operations.** Grants warehouse MONITOR and database access permissions required to keep the app running uninterrupted. Re-run when adding new warehouses or databases. | ACCOUNTADMIN |
-| `Setup_Shared_Views.ipynb` | **Troubleshooting & data sharing.** Creates shared views and tables to share data back to the Goldilox provider for support and analysis. | ACCOUNTADMIN |
-| `Migration.ipynb` | **Migration.** Prepares your account for app relisting — creates backup schema and grants app access. Backup and restore are handled in the app's Settings page. | ACCOUNTADMIN |
-| `Table_Scan_Efficiency_Report.ipynb` | **Discovery health check (no install required).** Reads your own Snowflake telemetry and reports how much partition scanning is wasted, the estimated dollar opportunity, and which tables/columns are involved. Makes no external calls and creates no objects. | ACCOUNTADMIN |
+> **Read-only — runs entirely in your account.** Every query is a `SELECT`; it **never modifies,
+> writes, or deletes any data or objects.** No app install. **No external network calls.** No data
+> leaves your account. No persistent objects created. It only reads Snowflake's Account Usage
+> telemetry and renders the results inline. (See [SECURITY.md](SECURITY.md).)
 
-> **Just want the health check?** The `Table_Scan_Efficiency_Report.ipynb` needs no app install and no Git integration. The fastest path: download that one file from this repo, then in Snowsight open **Notebooks → ⋯ → Import .ipynb file**, attach any warehouse, and **Run All**. (Or set it up from Git with the steps below, like the other notebooks.)
+It sizes the opportunity; it does **not** tell you which clustering key to build — that's the part
+[Goldilox Insights](https://goldilox.com) handles. Diagnosis is free and open; the prescription is
+the product.
 
-### How to setup notebooks in Snowsight
+---
 
-#### 1. Setup Integration
+## Run it in 5 minutes
+
+1. **Download** [`notebooks/Table_Scan_Efficiency_Report.ipynb`](notebooks/Table_Scan_Efficiency_Report.ipynb)
+   from this repo (open the file → **Download raw file**).
+2. In **Snowsight**, go to **Projects → Notebooks**, click the **▾** next to **+ Notebook**, and
+   choose **Import .ipynb file**. Pick the file.
+3. Choose any database/schema to hold it and attach a warehouse (an **X-Small** is plenty).
+4. Set the notebook's role to a read-only role (see below) or `ACCOUNTADMIN`, then click **Run all**.
+
+That's it — the results render inline. Nothing is installed or sent anywhere.
+
+---
+
+## Recommended role (least privilege)
+
+You *can* run it as `ACCOUNTADMIN`, but it only needs **read** access to Account Usage. Have an
+admin create a minimal read-only role once:
 
 ```sql
--- 1) Create Database for runbook
-CREATE DATABASE GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
-USE GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
-CREATE SCHEMA REPO;
+-- Run once as ACCOUNTADMIN (or a role with MANAGE GRANTS):
+CREATE ROLE IF NOT EXISTS SCAN_REPORT_READER;
 
--- 2) Create an API integration that allows GitHub access to public repo (no creds)
+-- Read-only access to Snowflake's Account Usage telemetry (metadata only — not your table data):
+GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE SCAN_REPORT_READER;
+
+-- A small warehouse to run the notebook's light queries:
+GRANT USAGE ON WAREHOUSE <YOUR_WAREHOUSE> TO ROLE SCAN_REPORT_READER;
+
+-- Let whoever runs the report use the role:
+GRANT ROLE SCAN_REPORT_READER TO USER <YOUR_USER>;
+```
+
+Then select `SCAN_REPORT_READER` as the notebook's role. (`ACCOUNTADMIN` works too if you'd rather
+skip this step.)
+
+---
+
+## What it reads — and what it doesn't
+
+**Reads** (Snowflake-native Account Usage views — query/partition *metadata*, never table contents):
+
+- `SNOWFLAKE.ACCOUNT_USAGE.TABLE_PRUNING_HISTORY`
+- `SNOWFLAKE.ACCOUNT_USAGE.COLUMN_QUERY_PRUNING_HISTORY`
+- `SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY` + `QUERY_ATTRIBUTION_HISTORY`
+
+**Does not**: make external calls, send data anywhere, create objects, or recommend clustering keys.
+
+**Requirements**: Enterprise Edition or above (the pruning views), and a few hours of Account Usage
+latency before recent activity appears.
+
+---
+
+## How to read the results
+
+1. **Scan efficiency** — what share of micro-partitions your large tables read vs. skip, plus a daily trend.
+2. **Opportunity ($)** — a directional, upper-bound estimate of the compute tied to scanning.
+3. **Top tables** — where avoidable scanning concentrates, ranked, with apportioned dollars.
+4. **Filter/join columns** — which columns your queries actually filter on (context, not a recommendation).
+
+---
+
+## What Goldilox does next
+
+This report tells you *whether* there's a problem and *how big*. The next questions — *which*
+clustering key to apply, in what column order, and the projected post-change savings — require
+modeling selectivity, cardinality, and predicate interaction. That's
+[**Goldilox Insights**](https://goldilox.com): a Snowflake Native App that makes the recommendation
+and projects the ROI, running entirely in your account.
+
+> 📈 In our TPC-DS benchmark, Goldilox's clustering recommendations cut the workload's compute **~50%**.
+> Snowflake bills by compute-time, and scanning **~76% fewer partitions** (**~81% fewer bytes**) roughly
+> halved total query time — the avoidable scanning this report measures, turned into savings.
+
+If your estimated opportunity looks meaningful, start at **[goldilox.com](https://goldilox.com)** or
+email **[contact@goldilox.com](mailto:contact@goldilox.com)**.
+
+---
+
+## Advanced: install from Git (auto-updating)
+
+Instead of importing the file, you can register this repo as a Snowflake Git repository so the
+notebook stays in sync:
+
+```sql
+-- One-time: workspace + API integration + Git repository object (no credentials needed)
+CREATE DATABASE IF NOT EXISTS GOLDILOX_INSIGHTS_CLIENT_WORKSPACE;
+CREATE SCHEMA   IF NOT EXISTS GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO;
+
 CREATE OR REPLACE API INTEGRATION goldilox_public_git
   API_PROVIDER = git_https_api
   API_ALLOWED_PREFIXES = ('https://github.com/goldilox-technology')
   ENABLED = TRUE;
 
--- 3) Register the public repo as a Git repository object
-CREATE OR REPLACE GIT REPOSITORY NOTEBOOKS_REPO
+CREATE OR REPLACE GIT REPOSITORY GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO
   ORIGIN = 'https://github.com/goldilox-technology/goldilox-insights-runbook.git'
   API_INTEGRATION = goldilox_public_git;
+
+-- Create the notebook from the repo
+CREATE SCHEMA IF NOT EXISTS GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS;
+CREATE OR REPLACE NOTEBOOK GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS.TABLE_SCAN_EFFICIENCY_REPORT
+  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Table_Scan_Efficiency_Report.ipynb'
+  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
+  COMMENT = 'Goldilox - Table scan efficiency report';
+
+-- To update later: ALTER GIT REPOSITORY ... FETCH; then CREATE OR REPLACE NOTEBOOK ... again.
 ```
 
-#### 2. Create Notebooks
+---
+
+## Already a GOLDILOX Insights customer?
+
+This repo also hosts the companion notebooks for the installed app. Run as `ACCOUNTADMIN`.
+
+| Notebook | Purpose |
+|---|---|
+| `Setup_App_Permissions.ipynb` | **Onboarding & ongoing operations.** Grants warehouse MONITOR and database access required to keep the app running. Re-run when adding warehouses or databases. |
+| `Setup_Shared_Views.ipynb` | **Troubleshooting & data sharing.** Creates shared views to share data back to the Goldilox provider for support. |
+| `Migration.ipynb` | **Migration.** Prepares your account for app relisting — backup schema + app grants. |
+
+Install them from the Git repository created above:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS;
 USE SCHEMA GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS;
 
--- Notebook 1: Setup App Permissions (required for onboarding and ongoing operations)
 CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_APP_PERMISSIONS
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
   MAIN_FILE = 'notebooks/Setup_App_Permissions.ipynb'
-  -- QUERY_WAREHOUSE = CLIENT_WH                   -- used by SQL cells
-  -- WAREHOUSE = CLIENT_WH                         -- used by Python runtime
   IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
   COMMENT = 'Goldilox Insights - Warehouse and database permission setup';
 
--- Notebook 2: Setup Shared Views (for troubleshooting and data sharing with provider)
 CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
   MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb'
-  -- QUERY_WAREHOUSE = CLIENT_WH                   -- used by SQL cells
-  -- WAREHOUSE = CLIENT_WH                         -- used by Python runtime
   IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
   COMMENT = 'Goldilox Insights - Shared views and data sharing setup';
 
--- Notebook 3: Migration (backup before uninstall, restore after reinstall)
 CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
   MAIN_FILE = 'notebooks/Migration.ipynb'
-  -- QUERY_WAREHOUSE = CLIENT_WH
-  -- WAREHOUSE = CLIENT_WH
   IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
   COMMENT = 'Goldilox Insights - Migration backup and restore';
 
--- Notebook 4: Table Scan Efficiency Report (discovery health check; no app install required)
-CREATE OR REPLACE NOTEBOOK TABLE_SCAN_EFFICIENCY_REPORT
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Table_Scan_Efficiency_Report.ipynb'
-  -- QUERY_WAREHOUSE = CLIENT_WH
-  -- WAREHOUSE = CLIENT_WH
-  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
-  COMMENT = 'Goldilox Insights - Table scan efficiency report';
+-- Update later: ALTER GIT REPOSITORY GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO FETCH;
+-- then re-run the CREATE OR REPLACE NOTEBOOK statements above.
 ```
 
-#### 3. Update Notebooks with latest code
+---
 
-```sql
--- 1) Fetch latest from the Git repository
-ALTER GIT REPOSITORY NOTEBOOKS_REPO FETCH;
-
--- 2) Refresh the notebooks to the latest branch contents
-CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_APP_PERMISSIONS
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Setup_App_Permissions.ipynb';
-
-CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb';
-
-CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Migration.ipynb';
-
-CREATE OR REPLACE NOTEBOOK TABLE_SCAN_EFFICIENCY_REPORT
-  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Table_Scan_Efficiency_Report.ipynb';
-```
+*License: [Apache-2.0](LICENSE). Questions & inquiries: [contact@goldilox.com](mailto:contact@goldilox.com).*
