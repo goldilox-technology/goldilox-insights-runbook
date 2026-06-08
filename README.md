@@ -9,6 +9,9 @@ Companion runbook for GOLDILOX Insights clients.
 | `Setup_App_Permissions.ipynb` | **Onboarding & ongoing operations.** Grants warehouse MONITOR and database access permissions required to keep the app running uninterrupted. Re-run when adding new warehouses or databases. | ACCOUNTADMIN |
 | `Setup_Shared_Views.ipynb` | **Troubleshooting & data sharing.** Creates shared views and tables to share data back to the Goldilox provider for support and analysis. | ACCOUNTADMIN |
 | `Migration.ipynb` | **Migration.** Prepares your account for app relisting — creates backup schema and grants app access. Backup and restore are handled in the app's Settings page. | ACCOUNTADMIN |
+| `Table_Scan_Efficiency_Report.ipynb` | **Discovery health check (no install required).** Reads your own Snowflake telemetry and reports how much partition scanning is wasted, the estimated dollar opportunity, and which tables/columns are involved. Makes no external calls and creates no objects. | ACCOUNTADMIN |
+
+> **Just want the health check?** The `Table_Scan_Efficiency_Report.ipynb` needs no app install and no Git integration. The fastest path: download that one file from this repo, then in Snowsight open **Notebooks → ⋯ → Import .ipynb file**, attach any warehouse, and **Run All**. (Or set it up from Git with the steps below, like the other notebooks.)
 
 ### How to setup notebooks in Snowsight
 
@@ -64,6 +67,15 @@ CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
   -- WAREHOUSE = CLIENT_WH
   IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
   COMMENT = 'Goldilox Insights - Migration backup and restore';
+
+-- Notebook 4: Table Scan Efficiency Report (discovery health check; no app install required)
+CREATE OR REPLACE NOTEBOOK TABLE_SCAN_EFFICIENCY_REPORT
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Table_Scan_Efficiency_Report.ipynb'
+  -- QUERY_WAREHOUSE = CLIENT_WH
+  -- WAREHOUSE = CLIENT_WH
+  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
+  COMMENT = 'Goldilox Insights - Table scan efficiency report';
 ```
 
 #### 3. Update Notebooks with latest code
@@ -84,4 +96,8 @@ CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
 CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
   FROM '@REPO.NOTEBOOKS_REPO/branches/main'
   MAIN_FILE = 'notebooks/Migration.ipynb';
+
+CREATE OR REPLACE NOTEBOOK TABLE_SCAN_EFFICIENCY_REPORT
+  FROM '@REPO.NOTEBOOKS_REPO/branches/main'
+  MAIN_FILE = 'notebooks/Table_Scan_Efficiency_Report.ipynb';
 ```
