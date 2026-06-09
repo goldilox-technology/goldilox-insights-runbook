@@ -130,40 +130,9 @@ CREATE OR REPLACE NOTEBOOK GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS.TABLE_SC
 
 ## Already a GOLDILOX Insights customer?
 
-This repo also hosts the companion notebooks for the installed app. Run as `ACCOUNTADMIN`.
-
-| Notebook | Purpose |
-|---|---|
-| `Setup_App_Permissions.ipynb` | **Onboarding & ongoing operations.** Grants warehouse MONITOR and database access required to keep the app running. Re-run when adding warehouses or databases. |
-| `Setup_Shared_Views.ipynb` | **Troubleshooting & data sharing.** Creates shared views to share data back to the Goldilox provider for support. |
-| `Migration.ipynb` | **Migration.** Prepares your account for app relisting — backup schema + app grants. |
-
-Install them from the Git repository created above:
-
-```sql
-USE SCHEMA GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.NOTEBOOKS;
-
-CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_APP_PERMISSIONS
-  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Setup_App_Permissions.ipynb'
-  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
-  COMMENT = 'Goldilox Insights - Warehouse and database permission setup';
-
-CREATE OR REPLACE NOTEBOOK GOLDILOX_SETUP_SHARED_VIEWS
-  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Setup_Shared_Views.ipynb'
-  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
-  COMMENT = 'Goldilox Insights - Shared views and data sharing setup';
-
-CREATE OR REPLACE NOTEBOOK GOLDILOX_MIGRATION
-  FROM '@GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO/branches/main'
-  MAIN_FILE = 'notebooks/Migration.ipynb'
-  IDLE_AUTO_SHUTDOWN_TIME_SECONDS = 60
-  COMMENT = 'Goldilox Insights - Migration backup and restore';
-
--- Update later: ALTER GIT REPOSITORY GOLDILOX_INSIGHTS_CLIENT_WORKSPACE.REPO.NOTEBOOKS_REPO FETCH;
--- then re-run the CREATE OR REPLACE NOTEBOOK statements above.
-```
+Companion notebooks for the installed app (permissions, shared views, migration) live in
+[`notebooks/existing-goldilox-customers/`](notebooks/existing-goldilox-customers/) — see that
+folder's README for setup instructions.
 
 ---
 
